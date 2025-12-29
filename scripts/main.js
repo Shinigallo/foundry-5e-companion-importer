@@ -146,10 +146,14 @@ async function importCharacter(data) {
   actorData.system.details.alignment = (data.alignmentName || "").replace(/_/g, " ").titleCase();
   actorData.system.details.background = (data.background?.backgroundId || "").replace(/_/g, " ").titleCase();
   
-  // Currency (Gold)
-  if (data.background?.goldPieces) {
-    actorData.system.currency = { gp: data.background.goldPieces };
-  }
+  // Currency (Root Level)
+  actorData.system.currency = {
+    cp: data.copper || 0,
+    sp: data.silver || 0,
+    ep: data.electrum || 0,
+    gp: data.gold || 0,
+    pp: data.platinum || 0
+  };
 
   // Speed
   if (data.race?.speed?.normal) {
@@ -185,50 +189,50 @@ async function importCharacter(data) {
   const itemsToCreate = [];
 
   // Helper to add items from CAH equipment lists
-  const addEquipmentItems = async (equipList) => {
+  const addEquipmentItems = async (equipList, typeHint = null) => {
     if (!equipList || !Array.isArray(equipList)) return;
     for (const entry of equipList) {
-        if (!entry.equipmentsModels) continue;
-        for (const model of entry.equipmentsModels) {
-            const name = model.name;
-            if (!name) continue;
+        let itemsToProcess = [];
+        if (entry.equipmentsModels) {
+            itemsToProcess = entry.equipmentsModels.map(m => ({ name: m.name, qty: m.number || 1, desc: m.description }));
+        } else if (entry.name) {
+            itemsToProcess = [{ name: entry.name, qty: entry.count || 1, desc: "" }];
+        }
+
+        for (const item of itemsToProcess) {
+            if (!item.name) continue;
             
-            let invItem = await findItemInCompendium(name);
+            let invItem = await findItemInCompendium(item.name, typeHint);
             if (!invItem) {
                 invItem = { 
-                    name: name, 
-                    type: "loot",
-                    system: { description: { value: model.description || "" } }
+                    name: item.name, 
+                    type: typeHint || "loot",
+                    system: { 
+                        description: { value: item.desc || "" },
+                        quantity: item.qty
+                    }
                 };
+            } else {
+                foundry.utils.mergeObject(invItem, {
+                    system: { quantity: item.qty }
+                });
             }
-            
-            // Quantity
-            const qty = model.number || 1;
-            foundry.utils.mergeObject(invItem, {
-                system: { quantity: qty }
-            });
-            
             itemsToCreate.push(invItem);
         }
     }
   };
 
-  // 1. Items from Background
-  if (data.background?.equipment) {
-      await addEquipmentItems(data.background.equipment);
-  }
+  // 1. Root Level Equipment
+  await addEquipmentItems(data.equipment);
+  await addEquipmentItems(data.weapons, "weapon");
+  await addEquipmentItems(data.armors, "equipment");
 
-  // 2. Items from Classes (Jobs)
+  // 2. Fallback from Classes (Jobs)
   if (data.jobs) {
       for (const job of data.jobs) {
           if (job.equipment) await addEquipmentItems(job.equipment);
       }
   }
-
-  // 3. General Inventory (if any)
-  if (data.inventory) await addEquipmentItems(data.inventory);
-  if (data.items) await addEquipmentItems(data.items);
-
 
   // Race
   if (data.race?.raceId) {
