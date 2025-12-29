@@ -1,0 +1,18 @@
+# Node modules
+node_modules/
+.npm/
+
+# Foundry
+foundry.js
+foundry-data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
