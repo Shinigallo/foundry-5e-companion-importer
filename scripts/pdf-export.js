@@ -33,23 +33,28 @@ export async function exportToPdf(actor) {
 
     // --- ABILITIES & SAVES ---
     const abilities = {
-      'str': { name: 'Strength', label: 'STR', saveBox: 'Check Box 11', saveField: 'ST Strength' },
-      'dex': { name: 'Dexterity', label: 'DEX', saveBox: 'Check Box 18', saveField: 'ST Dexterity' },
-      'con': { name: 'Constitution', label: 'CON', saveBox: 'Check Box 19', saveField: 'ST Constitution' },
-      'int': { name: 'Intelligence', label: 'INT', saveBox: 'Check Box 20', saveField: 'ST Intelligence' },
-      'wis': { name: 'Wisdom', label: 'WIS', saveBox: 'Check Box 21', saveField: 'ST Wisdom' },
-      'cha': { name: 'Charisma', label: 'CHA', saveBox: 'Check Box 22', saveField: 'ST Charisma' }
+      'str': { name: 'Strength', label: 'STR', modField: 'STRmod', saveBox: 'Check Box 11', saveField: 'ST Strength' },
+      'dex': { name: 'Dexterity', label: 'DEX', modField: 'DEXmod', saveBox: 'Check Box 18', saveField: 'ST Dexterity' },
+      'con': { name: 'Constitution', label: 'CON', modField: 'CONmod', saveBox: 'Check Box 19', saveField: 'ST Constitution' },
+      'int': { name: 'Intelligence', label: 'INT', modField: 'INTmod', saveBox: 'Check Box 20', saveField: 'ST Intelligence' },
+      'wis': { name: 'Wisdom', label: 'WIS', modField: 'WISmod', saveBox: 'Check Box 21', saveField: 'ST Wisdom' },
+      'cha': { name: 'Charisma', label: 'CHA', modField: 'CHamod', saveBox: 'Check Box 22', saveField: 'ST Charisma' }
     };
 
     for (const [key, conf] of Object.entries(abilities)) {
       const abil = data.abilities[key];
-      const mod = abil.mod;
+      // Fallback calculation if system hasn't derived it yet
+      const mod = (abil.mod !== undefined) ? abil.mod : Math.floor((abil.value - 10) / 2);
       
       setField(form, conf.label, abil.value.toString());
-      setField(form, `${conf.label}mod`, (mod >= 0 ? "+" : "") + mod);
+      setField(form, conf.modField, (mod >= 0 ? "+" : "") + mod);
       
       // Save
-      const saveMod = abil.save; // Foundry calculates this including proficiency
+      // Calculate save manually if missing (mod + prof if proficient)
+      let saveMod = abil.save;
+      if (saveMod === undefined) {
+          saveMod = mod + (abil.proficient ? (data.attributes.prof || 2) : 0);
+      }
       setField(form, conf.saveField, (saveMod >= 0 ? "+" : "") + saveMod);
       
       if (abil.proficient) {
