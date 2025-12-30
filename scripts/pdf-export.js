@@ -209,26 +209,46 @@ export async function exportToPdf(actor) {
     }
     
     // Spellcasting Info
-    // Naive check for main class
     if (classes.length > 0) {
-         // This is a simplification. Ideally check spellcasting attribute.
-         // Foundry stores spellcasting ability in attributes.spellcasting
-         const scAbility = data.attributes.spellcasting;
+         let scAbility = data.attributes.spellcasting;
+         let spellCasterClass = classes[0].name;
+
+         // Fallback logic if system attribute is missing or empty
+         if (!scAbility || scAbility === "") {
+             for (const cls of classes) {
+                 const name = cls.name.toLowerCase();
+                 if (name.includes("wizard") || name.includes("artificer") || name.includes("rogue") || name.includes("fighter")) {
+                     scAbility = "int";
+                     spellCasterClass = cls.name;
+                     if (name.includes("wizard")) break; // Priority
+                 } else if (name.includes("bard") || name.includes("sorcerer") || name.includes("paladin") || name.includes("warlock")) {
+                     scAbility = "cha";
+                     spellCasterClass = cls.name;
+                     if (name.includes("bard") || name.includes("sorcerer")) break;
+                 } else if (name.includes("cleric") || name.includes("druid") || name.includes("ranger") || name.includes("monk")) {
+                     scAbility = "wis";
+                     spellCasterClass = cls.name;
+                     if (name.includes("cleric") || name.includes("druid")) break;
+                 }
+             }
+         }
+         
          if (scAbility) {
              const abilityName = abilities[scAbility]?.name || scAbility;
              setField(form, 'SpellcastingAbility 2', abilityName);
-             
-             // Save DC
-             setField(form, 'SpellSaveDC  2', (data.attributes.spelldc || 10).toString());
-             // Attack Bonus
-             // Foundry doesn't explicitly store global spell attack bonus easily in simple fields, 
-             // usually mod + prof.
-             // data.attributes.spelldc - 8 = mod + prof
-             const atk = (data.attributes.spelldc || 10) - 8;
+             setField(form, 'Spellcasting Class 2', spellCasterClass);
+
+             // Recalculate DC/Atk if not in attributes (common for imports)
+             let dc = data.attributes.spelldc;
+             if (!dc || dc === 10) { // If default/missing, calc manually
+                 const mod = data.abilities[scAbility]?.mod || 0;
+                 const prof = data.attributes.prof || 2;
+                 dc = 8 + mod + prof;
+             }
+             setField(form, 'SpellSaveDC  2', dc.toString());
+
+             const atk = dc - 8;
              setField(form, 'SpellAtkBonus 2', `+${atk}`);
-             
-             // Class Name
-             setField(form, 'Spellcasting Class 2', classes[0].name);
          }
     }
 
