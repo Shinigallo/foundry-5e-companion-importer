@@ -210,28 +210,31 @@ export async function exportToPdf(actor) {
     
     // Spellcasting Info
     if (classes.length > 0) {
-         let scAbility = data.attributes.spellcasting;
-         let spellCasterClass = classes[0].name;
+         const spellcasterMap = {
+             "wizard": "int", "artificer": "int",
+             "bard": "cha", "sorcerer": "cha", "paladin": "cha", "warlock": "cha",
+             "cleric": "wis", "druid": "wis", "ranger": "wis"
+         };
 
-         // Fallback logic if system attribute is missing or empty
-         if (!scAbility || scAbility === "") {
-             for (const cls of classes) {
-                 const name = cls.name.toLowerCase();
-                 if (name.includes("wizard") || name.includes("artificer") || name.includes("rogue") || name.includes("fighter")) {
-                     scAbility = "int";
-                     spellCasterClass = cls.name;
-                     if (name.includes("wizard")) break; // Priority
-                 } else if (name.includes("bard") || name.includes("sorcerer") || name.includes("paladin") || name.includes("warlock")) {
-                     scAbility = "cha";
-                     spellCasterClass = cls.name;
-                     if (name.includes("bard") || name.includes("sorcerer")) break;
-                 } else if (name.includes("cleric") || name.includes("druid") || name.includes("ranger") || name.includes("monk")) {
-                     scAbility = "wis";
-                     spellCasterClass = cls.name;
-                     if (name.includes("cleric") || name.includes("druid")) break;
+         let detectedAbility = null;
+         let detectedClass = null;
+
+         for (const cls of classes) {
+             const className = cls.name.toLowerCase();
+             for (const [key, abil] of Object.entries(spellcasterMap)) {
+                 if (className.includes(key)) {
+                     detectedAbility = abil;
+                     detectedClass = cls.name;
+                     break;
                  }
              }
+             if (detectedAbility) break;
          }
+
+         const scAbility = detectedAbility || data.attributes.spellcasting || "int";
+         const spellCasterClass = detectedClass || classes[0].name;
+
+         console.log(`5e Companion Importer | Exporting PDF: Detected Spellcasting Ability: ${scAbility} from class ${spellCasterClass}`);
          
          if (scAbility) {
              const abilityName = abilities[scAbility]?.name || scAbility;
@@ -272,11 +275,14 @@ export async function exportToPdf(actor) {
 function setField(form, name, value) {
     try {
         const field = form.getTextField(name);
-        if (field) field.setText(value);
+        if (field) {
+            field.setText(value);
+        } else {
+             // Try searching by partial match or log it
+             // console.warn(`Field ${name} not found.`);
+        }
     } catch (e) {
-        // Field might not exist or be of different type, try text field first
-        // If it fails, ignore (or log in debug)
-        // console.warn(`Field ${name} not found or invalid.`);
+        // console.error(`Error setting field ${name}:`, e);
     }
 }
 
