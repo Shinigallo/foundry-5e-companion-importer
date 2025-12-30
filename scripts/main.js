@@ -338,6 +338,119 @@ async function importCharacter(data) {
   await actor.createEmbeddedDocuments("Item", itemsToCreate);
 }
 
+// --- EXPORT LOGIC ---
+
+Hooks.on('getActorSheetHeaderButtons', (sheet, buttons) => {
+  if (sheet.actor.type !== 'character') return;
+
+  buttons.unshift({
+    label: "Export to CAH",
+    class: "export-cah",
+    icon: "fas fa-file-export",
+    onclick: () => exportToCah(sheet.actor)
+  });
+});
+
+async function exportToCah(actor) {
+  const data = actor.system;
+  const items = actor.items;
+
+  const cahData = {
+    version: 1, // Basic versioning
+    name: actor.name,
+    image: "", // Skipping image export to keep file size small/simple
+    hp: data.attributes.hp.value,
+    baseAc: data.attributes.ac.flat || 10,
+    totalAc: data.attributes.ac.value || 10,
+    xp: data.details.xp.value,
+    alignmentName: data.details.alignment ? data.details.alignment.toUpperCase().replace(/ /g, "_") : "",
+    background: { backgroundId: data.details.background ? data.details.background.toUpperCase().replace(/ /g, "_") : "" },
+    race: { raceId: actor.items.find(i => i.type === "race")?.name.toUpperCase().replace(/ /g, "_") || "" },
+    
+    // Currency
+    copper: data.currency.cp,
+    silver: data.currency.sp,
+    electrum: data.currency.ep,
+    gold: data.currency.gp,
+    platinum: data.currency.pp,
+
+    // Abilities
+    strength: { score: data.abilities.str.value, save: data.abilities.str.proficient > 0 },
+    dexterity: { score: data.abilities.dex.value, save: data.abilities.dex.proficient > 0 },
+    constitution: { score: data.abilities.con.value, save: data.abilities.con.proficient > 0 },
+    intelligence: { score: data.abilities.int.value, save: data.abilities.int.proficient > 0 },
+    wisdom: { score: data.abilities.wis.value, save: data.abilities.wis.proficient > 0 },
+    charisma: { score: data.abilities.cha.value, save: data.abilities.cha.proficient > 0 },
+  };
+
+  // Skills
+  const skillMapRev = {
+    'acr': 'ACROBATICS', 'ani': 'ANIMAL_HANDLING', 'arc': 'ARCANA', 'ath': 'ATHLETICS',
+    'dec': 'DECEPTION', 'his': 'HISTORY', 'ins': 'INSIGHT', 'itm': 'INTIMIDATION',
+    'inv': 'INVESTIGATION', 'med': 'MEDICINE', 'nat': 'NATURE', 'prc': 'PERCEPTION',
+    'prf': 'PERFORMANCE', 'per': 'PERSUASION', 'rel': 'RELIGION', 'slt': 'SLEIGHT_OF_HAND',
+    'ste': 'STEALTH', 'sur': 'SURVIVAL'
+  };
+
+  cahData.skills = [];
+  for (const [key, skill] of Object.entries(data.skills)) {
+    if (skill.value > 0) { // If proficient or expert
+      cahData.skills.push({
+        typeName: skillMapRev[key],
+        proficiencyName: skill.value >= 2 ? 'EXPERT' : 'FULL'
+      });
+    }
+  }
+
+  // Classes (Jobs)
+  cahData.jobs = items.filter(i => i.type === "class").map(c => ({
+    jobId: c.name.toUpperCase().replace(/ /g, "_"),
+    level: c.system.levels
+  }));
+
+  // Spells
+  cahData.spells = items.filter(i => i.type === "spell").map(s => ({
+    name: s.name,
+    level: s.system.level,
+    prepared: s.system.preparation.mode === "prepared" && s.system.preparation.prepared
+  }));
+
+  // Inventory Separation
+  cahData.inventory = [];
+  cahData.weapons = [];
+  cahData.armors = [];
+
+  for (const item of items) {
+    const i = {
+      name: item.name,
+      count: item.system.quantity || 1,
+      description: item.system.description.value || ""
+    };
+
+    if (item.type === "weapon") {
+      cahData.weapons.push(i);
+    } else if (item.type === "equipment" && item.system.armor) {
+      cahData.armors.push(i);
+    } else if (["loot", "consumable", "backpack", "tool"].includes(item.type)) {
+      cahData.inventory.push(i);
+    }
+  }
+
+  // Export
+  const filename = `${actor.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.cah`;
+  saveDataToFile(JSON.stringify(cahData, null, 2), "application/json", filename);
+  ui.notifications.info("Character exported successfully!");
+}
+
+function saveDataToFile(content, contentType, fileName) {
+  const a = document.createElement("a");
+  const file = new Blob([content], { type: contentType });
+  a.href = URL.createObjectURL(file);
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 // --- HELPERS ---
 
 async function findItemInCompendium(name, type=null) {
