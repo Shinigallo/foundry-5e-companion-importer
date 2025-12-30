@@ -22,6 +22,9 @@
   "esmodules": [
     "scripts/main.js"
   ],
+  "scripts": [
+    "scripts/lib/pdf-lib.min.js"
+  ],
   "styles": [
     "styles/module.css"
   ],

@@ -1,4 +1,6 @@
 
+import { exportToPdf } from "./pdf-export.js";
+
 console.log("5e Companion Importer | Initializing");
 
 Hooks.on("renderActorDirectory", (app, html, data) => {
@@ -11,6 +13,24 @@ Hooks.on("renderActorDirectory", (app, html, data) => {
   });
 
   html.find(".directory-footer").append(button);
+});
+
+Hooks.on('getActorSheetHeaderButtons', (sheet, buttons) => {
+  if (sheet.actor.type !== 'character') return;
+
+  buttons.unshift({
+    label: "Export to CAH",
+    class: "export-cah",
+    icon: "fas fa-file-export",
+    onclick: () => exportToCah(sheet.actor)
+  });
+  
+  buttons.unshift({
+    label: "Export to PDF",
+    class: "export-pdf",
+    icon: "fas fa-file-pdf",
+    onclick: () => exportToPdf(sheet.actor)
+  });
 });
 
 class CompanionImportDialog extends Application {
@@ -339,17 +359,6 @@ async function importCharacter(data) {
 }
 
 // --- EXPORT LOGIC ---
-
-Hooks.on('getActorSheetHeaderButtons', (sheet, buttons) => {
-  if (sheet.actor.type !== 'character') return;
-
-  buttons.unshift({
-    label: "Export to CAH",
-    class: "export-cah",
-    icon: "fas fa-file-export",
-    onclick: () => exportToCah(sheet.actor)
-  });
-});
 
 async function exportToCah(actor) {
   const data = actor.system;
