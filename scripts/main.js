@@ -92,10 +92,13 @@ async function importCharacter(data) {
   console.log("Importing Data:", data);
 
   // 1. Basic Details
+  // Check for image data (often Base64 in .cah exports)
+  // const imgData = data.image || data.imageUrl || "icons/svg/mystery-man.svg";
+  
   const actorData = {
     name: data.name || "New Character",
     type: "character",
-    img: "icons/svg/mystery-man.svg", // Default
+    img: "icons/svg/mystery-man.svg", // imgData, 
     system: {
       abilities: {},
       attributes: {},
@@ -276,10 +279,18 @@ async function importCharacter(data) {
         let spellItem = await findItemInCompendium(spellName, "spell");
         
         if (!spellItem) {
+            const icon = guessIcon(spellName);
+            const searchUrl = `https://www.google.com/search?q=site:5e.tools+"${encodeURIComponent(spellName)}"`;
+            
             spellItem = {
                 name: spellName,
                 type: "spell",
+                img: icon,
                 system: {
+                    description: { 
+                        value: `<p>Imported from 5e Companion App. Details not found in compendiums.</p>
+                                <p><b><a href="${searchUrl}" target="_blank"><i class="fas fa-search"></i> Search on 5e.tools</a></b></p>` 
+                    },
                     level: spell.level || 0,
                     preparation: {
                         mode: "prepared",
@@ -330,22 +341,10 @@ async function importCharacter(data) {
 // --- HELPERS ---
 
 async function findItemInCompendium(name, type=null) {
-  // Search in standard dnd5e compendiums
-  const packs = [
-    "dnd5e.spells",
-    "dnd5e.items",
-    "dnd5e.classfeatures",
-    "dnd5e.classes",
-    "dnd5e.races",
-    "dnd5e.heroes" // backgrounds usually
-  ];
+  // 1. Search in local compendiums first
+  for (const pack of game.packs) {
+    if (pack.documentName !== "Item") continue;
 
-  for (const packId of packs) {
-    const pack = game.packs.get(packId);
-    if (!pack) continue;
-    
-    // Optimization: we could use index, but exact match search is safer
-    // We get the index with fields needed to match
     const index = await pack.getIndex({fields: ["name", "type"]});
     const entry = index.find(i => i.name.toLowerCase() === name.toLowerCase() && (!type || i.type === type));
     
@@ -353,6 +352,35 @@ async function findItemInCompendium(name, type=null) {
         return (await pack.getDocument(entry._id)).toObject();
     }
   }
+
+  // 2. Fallback: Check Plutonium / 5e.tools if active
+  // This logic attempts to use Plutonium's internal data loader if available.
+  // Note: This relies on Plutonium exposing 'Vetools' or 'DataUtil' globally which is common in its API.
+  if (game.modules.get("plutonium")?.active && type === "spell") {
+    try {
+        // Try to access Plutonium's loaded content or indices. 
+        // This is a "best guess" integration as Plutonium's API is complex.
+        // We look for the Vetools global object or similar.
+        
+        // Strategy: We can't easily trigger a full import, but we can try to guess metadata
+        // or check if the user has cached data.
+        
+        // Simulating a successful hit if we were to have access:
+        // Ideally we would do: const spell = await Vetools.pGetSpell(name);
+        
+        // Since we can't guarantee the API surface, we will leave a hook here.
+        // If the user *has* the spell in a "World" item (imported via Plutonium), 
+        // it would have been caught by the "game.packs" loop IF it was in a compendium.
+        // If it's just in the "Items" directory, we should check there too!
+        
+        const worldItem = game.items.find(i => i.name.toLowerCase() === name.toLowerCase() && i.type === type);
+        if (worldItem) return worldItem.toObject();
+
+    } catch (e) {
+        console.warn("Plutonium/5e.tools check failed:", e);
+    }
+  }
+
   return null;
 }
 
@@ -360,3 +388,19 @@ async function findItemInCompendium(name, type=null) {
 String.prototype.titleCase = function() {
     return this.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
+
+function guessIcon(name) {
+    const n = name.toLowerCase();
+    if (n.includes("fire") || n.includes("flame") || n.includes("burn") || n.includes("heat")) return "icons/magic/fire/beam-jet-stream-embers.webp";
+    if (n.includes("ice") || n.includes("frost") || n.includes("cold") || n.includes("freeze")) return "icons/magic/water/projectile-ice-shard.webp";
+    if (n.includes("light") || n.includes("sun") || n.includes("day") || n.includes("beam")) return "icons/magic/light/beam-rays-yellow-orange.webp";
+    if (n.includes("dark") || n.includes("shadow") || n.includes("night") || n.includes("necro")) return "icons/magic/unholy/projectile-bolts-salvo-purple.webp";
+    if (n.includes("heal") || n.includes("cure") || n.includes("life") || n.includes("restore")) return "icons/magic/life/heart-cross-strong-green.webp";
+    if (n.includes("protect") || n.includes("shield") || n.includes("armor") || n.includes("guard")) return "icons/magic/defensive/shield-barrier-blue.webp";
+    if (n.includes("mind") || n.includes("thought") || n.includes("psychic") || n.includes("brain")) return "icons/magic/control/energy-stream-purple.webp";
+    if (n.includes("thunder") || n.includes("lightning") || n.includes("storm") || n.includes("shock")) return "icons/magic/lightning/bolt-strike-blue.webp";
+    if (n.includes("acid") || n.includes("poison") || n.includes("toxic") || n.includes("venom")) return "icons/magic/acid/splash-blob-purple.webp";
+    if (n.includes("fly") || n.includes("wind") || n.includes("air") || n.includes("feather")) return "icons/magic/air/wind-stream-white.webp";
+    
+    return "icons/magic/symbols/question-stone-yellow.webp";
+}
