@@ -34,7 +34,7 @@ export async function exportToPdf(actor) {
     // --- ABILITIES & SAVES ---
     const abilities = {
       'str': { name: 'Strength', label: 'STR', modField: 'STRmod', saveBox: 'Check Box 11', saveField: 'ST Strength' },
-      'dex': { name: 'Dexterity', label: 'DEX', modField: 'DEXmod', saveBox: 'Check Box 18', saveField: 'ST Dexterity' },
+      'dex': { name: 'Dexterity', label: 'DEX', modField: 'DEXmod ', saveBox: 'Check Box 18', saveField: 'ST Dexterity' },
       'con': { name: 'Constitution', label: 'CON', modField: 'CONmod', saveBox: 'Check Box 19', saveField: 'ST Constitution' },
       'int': { name: 'Intelligence', label: 'INT', modField: 'INTmod', saveBox: 'Check Box 20', saveField: 'ST Intelligence' },
       'wis': { name: 'Wisdom', label: 'WIS', modField: 'WISmod', saveBox: 'Check Box 21', saveField: 'ST Wisdom' },
