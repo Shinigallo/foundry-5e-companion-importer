@@ -1,7 +1,7 @@
 {
   "id": "foundry-5e-companion-importer",
   "title": "5e Companion App Importer",
-  "description": "Imports characters from .cah files (5e Companion App) into Foundry VTT.",
+  "description": "Importa personaggi e sidekick dall'app 5e Companion App tramite file .cah",
   "version": "1.0.1",
   "compatibility": {
     "minimum": "11",
