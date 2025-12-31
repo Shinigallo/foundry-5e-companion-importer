@@ -56,10 +56,6 @@ class CompanionImportDialog extends Application {
           <label>File:</label>
           <input type="file" id="cah-upload" accept=".cah,.json" style="width: 100%;">
         </div>
-        <hr>
-        <div style="display: flex; justify-content: flex-end;">
-          <button id="do-import">Import</button>
-        </div>
       </div>
     `;
     
