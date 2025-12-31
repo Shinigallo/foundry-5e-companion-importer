@@ -1,6 +1,7 @@
 
 import { exportToPdf } from "./pdf-export.js";
 
+console.log("5e Companion Importer | Modulo caricato");
 console.log("5e Companion Importer | Initializing");
 
 Hooks.on("renderActorDirectory", (app, html, data) => {
