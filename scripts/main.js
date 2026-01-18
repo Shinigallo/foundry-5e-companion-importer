@@ -110,12 +110,25 @@ async function importCharacter(data) {
 
   // 1. Basic Details
   // Check for image data (often Base64 in .cah exports)
-  // const imgData = data.image || data.imageUrl || "icons/svg/mystery-man.svg";
+  let imgData = "icons/svg/mystery-man.svg";
+  if (data.image) {
+    // If it's already a data URI or a valid path, use it.
+    // CAH often exports raw base64 without the prefix for images.
+    if (data.image.startsWith("http") || data.image.startsWith("data:image")) {
+        imgData = data.image;
+    } else {
+        // Assume raw base64 jpeg/png if it looks like a hash/string
+        // 5e Companion App often uses jpg
+        imgData = `data:image/jpeg;base64,${data.image}`;
+    }
+  } else if (data.imageUrl) {
+      imgData = data.imageUrl;
+  }
   
   const actorData = {
     name: data.name || "New Character",
     type: "character",
-    img: "icons/svg/mystery-man.svg", // imgData, 
+    img: imgData, 
     system: {
       abilities: {},
       attributes: {},
