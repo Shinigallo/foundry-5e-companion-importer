@@ -260,12 +260,30 @@ async function importCharacter(data) {
     const subRace = data.race.subraceId ? data.race.subraceId.replace(/_/g, " ").titleCase() : "";
     const fullName = subRace ? `${raceName} (${subRace})` : raceName;
     
-    // Try to fetch from compendium or create placeholder
-    const itemData = await findItemInCompendium(raceName, "race") || {
+    let itemData = null;
+    const searchNames = [];
+    
+    if (subRace) {
+      searchNames.push(`${subRace} ${raceName}`);
+      searchNames.push(`${raceName} (${subRace})`);
+    }
+    searchNames.push(raceName);
+
+    for (const name of searchNames) {
+      itemData = await findItemInCompendium(name, "race");
+      if (itemData) break;
+    }
+
+    if (!itemData) {
+      itemData = {
         name: fullName,
         type: "race"
-    };
-    if(itemData.name !== fullName) itemData.name = fullName; // Update name to include subrace if generic found
+      };
+    } else {
+      if (itemData.name.toLowerCase() === raceName.toLowerCase() && subRace) {
+        itemData.name = fullName;
+      }
+    }
     itemsToCreate.push(itemData);
   }
 
